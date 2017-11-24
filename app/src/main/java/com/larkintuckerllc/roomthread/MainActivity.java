@@ -1,5 +1,7 @@
 package com.larkintuckerllc.roomthread;
 
+import android.app.Activity;
+import android.app.ProgressDialog;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.DialogInterface;
 import android.support.v7.app.AlertDialog;
@@ -24,44 +26,56 @@ public class MainActivity extends AppCompatActivity {
 
     private TodosViewModel mTodosViewModel;
     private List<Todo> mTodos = new ArrayList<Todo>();
+    private Activity self = this;
+    private ProgressDialog mProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mProgressDialog = new ProgressDialog(this);
+        mProgressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        mProgressDialog.setIndeterminate(true);
+        mProgressDialog.setMessage("Updating");
+
         final RecyclerView todosRecyclerView = findViewById(R.id.rvTodos);
         final TodosAdapter todosAdapter = new TodosAdapter();
         todosRecyclerView.setAdapter(todosAdapter);
         mTodosViewModel = ViewModelProviders.of(this).get(TodosViewModel.class);
         mTodosViewModel.todos.observe(this, (todos -> {
-            DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            new Thread(() -> {
+                DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
 
-                @Override
-                public int getOldListSize() {
-                    return mTodos.size();
-                }
+                    @Override
+                    public int getOldListSize() {
+                        return mTodos.size();
+                    }
 
-                @Override
-                public int getNewListSize() {
-                    return todos.size();
-                }
+                    @Override
+                    public int getNewListSize() {
+                        return todos.size();
+                    }
 
-                @Override
-                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                    return mTodos.get(oldItemPosition).id ==
-                            todos.get(newItemPosition).id;
-                }
+                    @Override
+                    public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                        return mTodos.get(oldItemPosition).id ==
+                                todos.get(newItemPosition).id;
+                    }
 
-                @Override
-                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                    Todo oldTodo = mTodos.get(oldItemPosition);
-                    Todo newTodo = todos.get(newItemPosition);
-                    return oldTodo.equals(newTodo);
-                }
+                    @Override
+                    public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                        Todo oldTodo = mTodos.get(oldItemPosition);
+                        Todo newTodo = todos.get(newItemPosition);
+                        return oldTodo.equals(newTodo);
+                    }
 
-            });
-            result.dispatchUpdatesTo(todosAdapter);
-            mTodos = todos;
+                });
+                self.runOnUiThread(() -> {
+                    result.dispatchUpdatesTo(todosAdapter);
+                    mTodos = todos;
+                    mProgressDialog.hide();
+                });
+            }).start();
         }));
     }
 
@@ -85,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 String name= String.valueOf(nameEditText.getText());
                                 long date = (new Date()).getTime();
+                                mProgressDialog.show();
                                 mTodosViewModel.addTodo(name, date);
                             }
                         })
@@ -132,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(View view) {
                         int pos = getAdapterPosition();
                         Todo todo = mTodos.get(pos);
+                        mProgressDialog.show();
                         mTodosViewModel.removeTodo(todo.id);
                     }
                 });

@@ -23,13 +23,17 @@ public class TodosViewModel extends AndroidViewModel {
         Todo todo = new Todo();
         todo.name = name;
         todo.date = date;
-        mDb.todoModel().insertTodo(todo);
+        new Thread(() -> {
+            mDb.todoModel().insertTodo(todo);
+        }).start();
     }
 
     public void removeTodo(int id) {
         Todo todo = new Todo();
         todo.id = id;
-        mDb.todoModel().deleteTodo(todo);
+        new Thread(() -> {
+            mDb.todoModel().deleteTodo(todo);
+        }).start();
     }
 
 }
